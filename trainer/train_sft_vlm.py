@@ -28,21 +28,27 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
         X = X.to(args.device)
         Y = Y.to(args.device)
         loss_mask = loss_mask.to(args.device)
-        pixel_values = pixel_values.to(args.device)
+        pixel_values = pixel_values.to(args.device)##===================================
+
+
+
         lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
         with autocast_ctx:
-            res = model(X, pixel_values=pixel_values)
+            res = model(X, pixel_values=pixel_values)##===================================
+
+
+
             loss = loss_fct(
                 res.logits.view(-1, res.logits.size(-1)),
                 Y.view(-1)
             ).view(Y.size())
 
             loss = (loss * loss_mask).sum() / loss_mask.sum()
-            loss += res.aux_loss
-            loss = loss / args.accumulation_steps
+            loss += res.aux_loss##===================================
+            loss = loss / args.accumulation_steps##===================================
 
         scaler.scale(loss).backward()
 
@@ -57,7 +63,7 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
 
         if step % args.log_interval == 0 or step == iters - 1:
             spend_time = time.time() - start_time
-            current_loss = loss.item() * args.accumulation_steps
+            current_loss = loss.item() * args.accumulation_steps##===================================
             current_lr = optimizer.param_groups[-1]['lr']
             eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
             
@@ -85,8 +91,8 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MiniMind-V SFT")
-    parser.add_argument("--save_dir", type=str, default="../out", help="模型保存目录")
-    parser.add_argument('--save_weight', default='sft_vlm', type=str, help="保存权重的前缀名")
+    parser.add_argument("--save_dir", type=str, default="../out", help="模型保存目录")##===================================
+    parser.add_argument('--save_weight', default='sft_vlm', type=str, help="保存权重的前缀名")##===================================
     parser.add_argument("--epochs", type=int, default=2, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=4, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=1e-6, help="初始学习率")
@@ -100,11 +106,11 @@ if __name__ == "__main__":
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=1536, type=int, help="训练的最大截断长度")
-    parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
-    parser.add_argument("--data_path", type=str, default="../dataset/sft_data.jsonl", help="训练数据路径")
-    parser.add_argument("--images_path", type=str, default="../dataset/sft_images", help="训练图像路径")
-    parser.add_argument('--from_weight', default='pretrain_vlm', type=str, help="基于哪个权重训练，为none则不基于任何权重训练")
-    parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
+    parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")##===================================
+    parser.add_argument("--data_path", type=str, default="../dataset/sft_data.jsonl", help="训练数据路径")##===================================
+    parser.add_argument("--images_path", type=str, default="../dataset/sft_images", help="训练图像路径")##===================================
+    parser.add_argument('--from_weight', default='pretrain_vlm', type=str, help="基于哪个权重训练，为none则不基于任何权重训练")##===================================##===================================
+    parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")##===================================##===================================
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-V-SFT", help="wandb项目名")
     args = parser.parse_args()
@@ -117,8 +123,8 @@ if __name__ == "__main__":
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     vlm_config = VLMConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, 
-                           max_seq_len=args.max_seq_len, use_moe=bool(args.use_moe))
-    ckp_data = vlm_checkpoint(vlm_config, weight=args.save_weight, save_dir='../checkpoints') if args.from_resume==1 else None
+                           max_seq_len=args.max_seq_len, use_moe=bool(args.use_moe))##===================================
+    ckp_data = vlm_checkpoint(vlm_config, weight=args.save_weight, save_dir='../checkpoints') if args.from_resume==1 else None##===================================##===================================
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"
@@ -135,12 +141,19 @@ if __name__ == "__main__":
         wandb.init(project=args.wandb_project, name=wandb_run_name, id=wandb_id, resume=resume)
     
     # ========== 5. 定义模型、数据、优化器 ==========
-    model, tokenizer, preprocess = init_vlm_model(vlm_config, from_weight=args.from_weight, 
+    model, tokenizer, preprocess = init_vlm_model(vlm_config, from_weight=args.from_weight, ##===================================##===================================
                                                    device=args.device)
-    train_ds = VLMDataset(args.data_path, args.images_path, tokenizer, preprocess=preprocess,
+
+
+
+    train_ds = VLMDataset(args.data_path, args.images_path, tokenizer,
+                          preprocess=preprocess,##===================================
                           image_special_token=vlm_config.image_special_token,
                           max_length=vlm_config.max_seq_len)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
+
+
+
     scaler = torch.cuda.amp.GradScaler(enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     

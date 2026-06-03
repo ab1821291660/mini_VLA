@@ -4,15 +4,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import warnings
-from .model_vlm import MiniMindVLM, VLMConfig, VisionProj
-from .model_minimind import MOEFeedForward
+from .model_vlm import MiniMindVLM, VLMConfig, VisionProj##===================================
+from .model_minimind import MOEFeedForward##===================================
 from typing import Optional, Tuple, List, Union
 from transformers import CLIPProcessor, CLIPModel
 
 warnings.filterwarnings('ignore')
 
 
-class VLAConfig(VLMConfig):
+class VLAConfig(VLMConfig):##===================================
     model_type = "minimind-vla"
 
     def __init__(

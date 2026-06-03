@@ -50,29 +50,32 @@ def init_vlm_model(vlm_config, from_weight='pretrain_vlm', tokenizer_path='../mo
                    vision_model_path='../model/vision_model/clip-vit-base-patch16', 
                    save_dir='../out', device='cuda', freeze_llm=False):
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    model = MiniMindVLM(vlm_config, vision_model_path=vision_model_path)
-    
+    model = MiniMindVLM(vlm_config, vision_model_path=vision_model_path)##===================================
+
+
     if from_weight != 'none':
         moe_suffix = '_moe' if vlm_config.use_moe else ''
-        weight_path = f'{save_dir}/{from_weight}_{vlm_config.hidden_size}{moe_suffix}.pth'
+        weight_path = f'{save_dir}/{from_weight}_{vlm_config.hidden_size}{moe_suffix}.pth'##===================================##===================================
         weights = torch.load(weight_path, map_location=device)
         model.load_state_dict(weights, strict=False)
-    
+
+
     # Pretrain阶段：冻结除 vision_proj 外的所有参数
     if freeze_llm:
         for name, param in model.named_parameters():
             if 'vision_proj' not in name:
-                param.requires_grad = False
+                param.requires_grad = False##===================================
     
     # 默认全参训练时的可选配置（已注释）
     # # 只解冻注意力机制中的投影层参数
     # for name, param in model.model.named_parameters():
     #     if any(proj in name for proj in ['q_proj', 'k_proj', 'v_proj', 'o_proj']):
-    #         param.requires_grad = True
+    #         param.requires_grad = True ##===================================
     
     Logger(f'所加载VLM Model可训练参数：{sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6:.3f} 百万')
     preprocess = model.processor
-    return model.to(device), tokenizer, preprocess
+    return model.to(device), tokenizer, \
+        preprocess##===================================
 
 
 def vlm_checkpoint(vlm_config, weight='pretrain_vlm', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir='../checkpoints', **kwargs):

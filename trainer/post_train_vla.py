@@ -28,13 +28,13 @@ def init_vla_model(vla_config, from_weight='pretrain_vlm', tokenizer_path='model
     初始化 VLA 模型
     
     Args:
-        vla_config: VLA 配置
-        from_weight: 预训练权重名称
+        vla_config: VLA 配置##===================================
+        from_weight: 预训练权重名称##===================================##===================================
         tokenizer_path: tokenizer 路径
-        vision_model_path: 视觉模型路径
+        vision_model_path: 视觉模型路径##===================================
         save_dir: 保存目录
         device: 设备
-        freeze_vision: 是否冻结视觉编码器
+        freeze_vision: 是否冻结视觉编码器##===================================
     """
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     
@@ -53,9 +53,11 @@ def init_vla_model(vla_config, from_weight='pretrain_vlm', tokenizer_path='model
         Logger(f'请检查视觉模型路径: {vision_model_path}')
         Logger(f'或者确保网络连接正常，可以从 HuggingFace 下载模型')
         raise ValueError(f"视觉编码器加载失败，路径: {vision_model_path}")
-    
+
+
+
     # 加载预训练权重
-    if from_weight != 'none':
+    if from_weight != 'none':##===================================##===================================
         moe_suffix = '_moe' if vla_config.use_moe else ''
         weight_path = f'{save_dir}/{from_weight}_{vla_config.hidden_size}{moe_suffix}.pth'
         if os.path.exists(weight_path):
@@ -64,12 +66,13 @@ def init_vla_model(vla_config, from_weight='pretrain_vlm', tokenizer_path='model
             model.load_state_dict(weights, strict=False)
         else:
             Logger(f'警告: 预训练权重不存在: {weight_path}，使用随机初始化')
-    
+
+
     # 固定视觉编码器
     if freeze_vision:
         for name, param in model.named_parameters():
             if 'vision_encoder' in name:
-                param.requires_grad = False
+                param.requires_grad = False##===================================
                 # Logger(f'冻结参数: {name}')
     
     # 统计可训练参数
@@ -79,7 +82,8 @@ def init_vla_model(vla_config, from_weight='pretrain_vlm', tokenizer_path='model
     Logger(f'VLA 模型可训练参数量: {trainable_params / 1e6:.3f} 百万')
     
     preprocess = model.processor
-    return model.to(device), tokenizer, preprocess
+    return model.to(device), tokenizer, \
+        preprocess##===================================
 
 
 def vla_checkpoint(vla_config, weight='post_train_vla', model=None, optimizer=None, epoch=0, step=0, wandb=None, save_dir='checkpoints', **kwargs):
@@ -153,7 +157,9 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
         pixel_values = pixel_values.to(args.device)
         action_targets = action_targets.to(args.device)
         robot_states = robot_states.to(args.device) if robot_states is not None else None
-        
+
+
+
         # 学习率调度
         lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate)
         for param_group in optimizer.param_groups:
@@ -162,7 +168,7 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
         with autocast_ctx:
             # 前向传播
             try:
-                res = model(
+                res = model(##===================================
                     input_ids=X,
                     pixel_values=pixel_values,
                     robot_states=robot_states,
@@ -175,7 +181,10 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
                 Logger(f"pixel_values shape: {pixel_values.shape if pixel_values is not None else None}")
                 Logger(f"action_targets shape: {action_targets.shape if action_targets is not None else None}")
                 raise
-            
+
+
+
+
             # 计算语言模型损失
             lm_loss_tensor = loss_fct(
                 res.logits.view(-1, res.logits.size(-1)),
@@ -186,14 +195,16 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
                 lm_loss = torch.zeros(1, device=args.device, dtype=lm_loss_tensor.dtype)
             else:
                 lm_loss = (lm_loss_tensor * loss_mask).sum() / mask_sum
-            
+
+
             # 计算 action 损失
-            action_loss = res.get('action_loss', torch.tensor(0.0, device=args.device))
-            
+            action_loss = res.get('action_loss', torch.tensor(0.0, device=args.device))##===================================
+
+
             # 总损失
-            total_loss = lm_loss + args.action_loss_weight * action_loss
-            total_loss += res.aux_loss if hasattr(res, 'aux_loss') and res.aux_loss is not None else 0.0
-            total_loss = total_loss / args.accumulation_steps
+            total_loss = lm_loss + args.action_loss_weight * action_loss##===================================##===================================
+            total_loss += res.aux_loss if hasattr(res, 'aux_loss') and res.aux_loss is not None else 0.0##===================================
+            total_loss = total_loss / args.accumulation_steps##===================================
 
         scaler.scale(total_loss).backward()
 
@@ -208,7 +219,7 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
 
         # 每个step都记录loss
         spend_time = time.time() - start_time
-        current_lm_loss = lm_loss.item() * args.accumulation_steps
+        current_lm_loss = lm_loss.item() * args.accumulation_steps##===================================
         current_action_loss = action_loss.item() * args.accumulation_steps if isinstance(action_loss, torch.Tensor) else action_loss * args.accumulation_steps
         current_total_loss = total_loss.item() * args.accumulation_steps
         current_lr = optimizer.param_groups[-1]['lr']
@@ -245,17 +256,16 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
             }
             clean_state_dict = {k: v.half() for k, v in clean_state_dict.items()}  # 半精度保存
             torch.save(clean_state_dict, ckp)
-            vla_checkpoint(vla_config, weight=args.save_weight, model=model, optimizer=optimizer, 
+            vla_checkpoint(vla_config, weight=args.save_weight, model=model, optimizer=optimizer,  ##===================================##===================================
                          epoch=epoch, step=step, wandb=wandb, save_dir='checkpoints', scaler=scaler)
             model.train()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MiniMind-VLA Post Training")
-    
     # 基本参数
-    parser.add_argument("--save_dir", type=str, default="out", help="模型保存目录")
-    parser.add_argument('--save_weight', default='post_train_vla', type=str, help="保存权重的前缀名")
+    parser.add_argument("--save_dir", type=str, default="out", help="模型保存目录")##===================================
+    parser.add_argument('--save_weight', default='post_train_vla', type=str, help="保存权重的前缀名")##===================================
     parser.add_argument("--epochs", type=int, default=5, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=4, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=1e-5, help="初始学习率")
@@ -271,19 +281,19 @@ if __name__ == "__main__":
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=1536, type=int, help="训练的最大截断长度")
-    parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
+    parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")##===================================
     
     # VLA 特定参数
-    parser.add_argument('--action_dim', default=8, type=int, help="动作维度")
-    parser.add_argument('--action_chunk_size', default=100, type=int, help="action chunk 大小")
-    parser.add_argument('--action_hidden_size', default=256, type=int, help="action 模块隐藏层大小")
-    parser.add_argument('--action_loss_weight', default=1.0, type=float, help="action 损失权重")
-    parser.add_argument('--robot_state_dim', default=8, type=int, help="机器人状态维度，默认7个关节角度+1个 gripper 状态")
+    parser.add_argument('--action_dim', default=8, type=int, help="动作维度")##===================================
+    parser.add_argument('--action_chunk_size', default=100, type=int, help="action chunk 大小")##===================================
+    parser.add_argument('--action_hidden_size', default=256, type=int, help="action 模块隐藏层大小")##===================================
+    parser.add_argument('--action_loss_weight', default=1.0, type=float, help="action 损失权重")##===================================##===================================
+    parser.add_argument('--robot_state_dim', default=8, type=int, help="机器人状态维度，默认7个关节角度+1个 gripper 状态")##===================================##===================================
     
     # 数据参数
-    parser.add_argument("--data_path", type=str, default="./dataset/vla_data.hdf5", help="训练数据路径（HDF5文件）")
-    parser.add_argument('--from_weight', default='pretrain_vlm', type=str, help="基于哪个权重训练，为none则不基于任何权重训练")
-    parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
+    parser.add_argument("--data_path", type=str, default="./dataset/vla_data.hdf5", help="训练数据路径（HDF5文件）")##===================================
+    parser.add_argument('--from_weight', default='pretrain_vlm', type=str, help="基于哪个权重训练，为none则不基于任何权重训练")##===================================##===================================
+    parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")##===================================##===================================
     
     # SwanLab 参数
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用 SwanLab")
@@ -299,17 +309,17 @@ if __name__ == "__main__":
     
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
-    vla_config = VLAConfig(
+    vla_config = VLAConfig(##===================================
         hidden_size=args.hidden_size,
         num_hidden_layers=args.num_hidden_layers,
         max_seq_len=args.max_seq_len,
         use_moe=bool(args.use_moe),
-        action_dim=args.action_dim,
-        action_chunk_size=args.action_chunk_size,
-        action_hidden_size=args.action_hidden_size,
-        robot_state_dim=args.robot_state_dim,
+        action_dim=args.action_dim,#8
+        action_chunk_size=args.action_chunk_size,#100
+        action_hidden_size=args.action_hidden_size,#256
+        robot_state_dim=args.robot_state_dim,#8
     )
-    ckp_data = vla_checkpoint(vla_config, weight=args.save_weight, save_dir='checkpoints') if args.from_resume == 1 else None
+    ckp_data = vla_checkpoint(vla_config, weight=args.save_weight, save_dir='checkpoints') if args.from_resume == 1 else None##===================================##===================================
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"
@@ -342,25 +352,33 @@ if __name__ == "__main__":
         )
     
     # ========== 5. 定义模型、数据、优化器 ==========
-    model, tokenizer, preprocess = init_vla_model(
+    model, tokenizer, preprocess = init_vla_model(##===================================
         vla_config,
-        from_weight=args.from_weight,
+        from_weight=args.from_weight,##===================================##===================================
         device=args.device,
         freeze_vision=True  # 固定视觉编码器
     )
-    
-    train_ds = VLADataset(
+
+
+
+
+    train_ds = VLADataset(##===================================
         hdf5_path=args.data_path,
         tokenizer=tokenizer,
-        preprocess=preprocess,
+        preprocess=preprocess,##===================================
         max_length=vla_config.max_seq_len,
-        image_special_token=vla_config.image_special_token,
-        action_dim=args.action_dim,
-        action_chunk_size=args.action_chunk_size,
-        robot_state_dim=args.robot_state_dim,
+        image_special_token=vla_config.image_special_token,##===================================
+                # image_special_token: str = '@' * 196,
+                # image_ids: List = [34] * 196,
+        action_dim=args.action_dim,#8
+        action_chunk_size=args.action_chunk_size,#100
+        robot_state_dim=args.robot_state_dim,#8
     )
-    
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
+
+
+
+
     scaler = torch.cuda.amp.GradScaler(enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
