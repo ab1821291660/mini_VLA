@@ -20,10 +20,10 @@ import pybullet_data
 
 @dataclass
 class Episode:
-    instruction: str
-    images: List[np.ndarray]
-    actions: List[np.ndarray]
-    robot_states: List[np.ndarray]
+    instruction: str##===================================
+    images: List[np.ndarray]##===================================
+    actions: List[np.ndarray]##===================================
+    robot_states: List[np.ndarray]##===================================
     meta: Dict
 
 
@@ -287,6 +287,8 @@ class FrankaPyBulletEnv:
         robot_state = np.concatenate([arm_q, gripper_q])
         return robot_state
 
+    def ________(self):
+        pass
     def scripted_pick(self, object_name: str) -> Episode:
         object_id = self.object_ids[object_name]
         obj_pos, _ = pb.getBasePositionAndOrientation(object_id)
@@ -338,11 +340,14 @@ class FrankaPyBulletEnv:
         )
 
 
-def save_episodes_to_hdf5(episodes: List[Episode], out_path: str):
+
+
+def save_episodes_to_hdf5(episodes: List[Episode],
+                          out_path: str):
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     utf8_str = h5py.string_dtype(encoding="utf-8")
     with h5py.File(out_path, "w") as f:
-        grp = f.create_group("data")
+        grp = f.create_group("data")##===================================
         for idx, ep in enumerate(episodes):
             ep_grp = grp.create_group(f"episode_{idx:05d}")
             ep_grp.create_dataset("rgb", data=np.stack(ep.images, axis=0), compression="gzip")
@@ -351,6 +356,7 @@ def save_episodes_to_hdf5(episodes: List[Episode], out_path: str):
             ep_grp.create_dataset("text", data=ep.instruction, dtype=utf8_str)
             for key, value in ep.meta.items():
                 ep_grp.attrs[key] = value
+
 
         # 兼容旧 dataloader：保存单帧与动作
         final_images = np.stack([ep.images[-1] for ep in episodes], axis=0)
@@ -361,33 +367,32 @@ def save_episodes_to_hdf5(episodes: List[Episode], out_path: str):
         f.create_dataset("action", data=final_actions, compression="gzip")
         f.create_dataset("robot_state", data=final_robot_states, compression="gzip")
         f.create_dataset("text", data=texts, dtype=utf8_str)
-
     print(f"保存 {len(episodes)} 条演示到 {out_path}")
-
-
 def main():
+    #python scripts\collect_franka_hdf5.py
+    # --gui
+    # --episode 10
     parser = argparse.ArgumentParser(description="PyBullet Franka 抓取数据采集")
     parser.add_argument("--episodes", type=int, default=10, help="录制的任务数量")
     parser.add_argument("--output", type=str, default="dataset/franka_pick_dataset.hdf5")
-    parser.add_argument("--gui", action="store_true", help="是否启用 PyBullet GUI")
+    # parser.add_argument("--gui", action="store_true", help="是否启用 PyBullet GUI")
+    parser.add_argument("--gui", default=True, help="是否启用 PyBullet GUI")
     args = parser.parse_args()
 
-    env = FrankaPyBulletEnv(gui=args.gui)
-    episodes: List[Episode] = []
 
-    for i in range(args.episodes):
+    env = FrankaPyBulletEnv(gui=args.gui)##===================================
+    episodes: List[Episode] = []
+    for i in range(args.episodes):#10
         env.reset_robot()
         env.reset_objects()
         env.spawn_objects()
         target_name = random.choice(list(env.object_ids.keys()))
-        episode = env.scripted_pick(target_name)
+        episode = env.scripted_pick(target_name)##===================================
         episodes.append(episode)
         print(f"[{i+1}/{args.episodes}] 完成 {target_name} 的抓取演示")
-
-    save_episodes_to_hdf5(episodes, args.output)
+    print(len(episodes))
+    save_episodes_to_hdf5(episodes, args.output)##===================================
     pb.disconnect(env.client)
-
-
 if __name__ == "__main__":
     main()
 

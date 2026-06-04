@@ -17,16 +17,12 @@ from transformers import AutoTokenizer
 from model.model_vla import MiniMindVLA, VLAConfig
 from dataset.vla_dataloader import VLADataset
 from trainer.trainer_utils import get_lr, Logger, is_main_process, init_distributed_mode, setup_seed, SkipBatchSampler
-
 warnings.filterwarnings('ignore')
-
-
 def init_vla_model(vla_config, from_weight='pretrain_vlm', tokenizer_path='model', 
                    vision_model_path='./model/vision_model/clip-vit-base-patch16', 
                    save_dir='out', device='cuda', freeze_vision=True):
     """
     初始化 VLA 模型
-    
     Args:
         vla_config: VLA 配置##===================================
         from_weight: 预训练权重名称##===================================##===================================
@@ -37,16 +33,14 @@ def init_vla_model(vla_config, from_weight='pretrain_vlm', tokenizer_path='model
         freeze_vision: 是否冻结视觉编码器##===================================
     """
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    
     # 如果本地路径不存在，尝试使用 HuggingFace 模型名称
     if not os.path.exists(vision_model_path):
         Logger(f'警告: 视觉模型路径不存在: {vision_model_path}')
         Logger(f'将尝试从 HuggingFace 下载模型...')
         # 使用 HuggingFace 模型名称
         vision_model_path = "openai/clip-vit-base-patch16"
-    
-    model = MiniMindVLA(vla_config, vision_model_path=vision_model_path)
-    
+    model = MiniMindVLA(vla_config, ##===================================
+                        vision_model_path=vision_model_path)##===================================
     # 检查视觉编码器是否成功加载
     if model.vision_encoder is None:
         Logger(f'错误: 视觉编码器加载失败！')
@@ -149,7 +143,6 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
     """训练一个 epoch"""
     loss_fct = nn.CrossEntropyLoss(reduction='none')
     start_time = time.time()
-    
     for step, (X, Y, loss_mask, pixel_values, action_targets, robot_states) in enumerate(loader, start=start_step + 1):
         X = X.to(args.device)
         Y = Y.to(args.device)
@@ -276,13 +269,12 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=50, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=500, help="模型保存间隔")
-    
     # 模型参数
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=1536, type=int, help="训练的最大截断长度")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")##===================================
-    
+
     # VLA 特定参数
     parser.add_argument('--action_dim', default=8, type=int, help="动作维度")##===================================
     parser.add_argument('--action_chunk_size', default=100, type=int, help="action chunk 大小")##===================================
@@ -291,16 +283,15 @@ if __name__ == "__main__":
     parser.add_argument('--robot_state_dim', default=8, type=int, help="机器人状态维度，默认7个关节角度+1个 gripper 状态")##===================================##===================================
     
     # 数据参数
-    parser.add_argument("--data_path", type=str, default="./dataset/vla_data.hdf5", help="训练数据路径（HDF5文件）")##===================================
+    parser.add_argument("--data_path", type=str, default="./dataset/franka_pick_dataset.hdf5", help="训练数据路径（HDF5文件）")##===================================
+    # parser.add_argument("--data_path", type=str, default="./dataset/vla_data.hdf5", help="训练数据路径（HDF5文件）")##===================================
     parser.add_argument('--from_weight', default='pretrain_vlm', type=str, help="基于哪个权重训练，为none则不基于任何权重训练")##===================================##===================================
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")##===================================##===================================
     
     # SwanLab 参数
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用 SwanLab")
     parser.add_argument("--swanlab_project", type=str, default="MiniMind-VLA", help="SwanLab 项目名")
-    
     args = parser.parse_args()
-
     # ========== 1. 初始化环境和随机种子 ==========
     local_rank = init_distributed_mode()
     if dist.is_initialized():
@@ -312,7 +303,7 @@ if __name__ == "__main__":
     vla_config = VLAConfig(##===================================
         hidden_size=args.hidden_size,
         num_hidden_layers=args.num_hidden_layers,
-        max_seq_len=args.max_seq_len,
+        max_seq_len=args.max_seq_len,#1536
         use_moe=bool(args.use_moe),
         action_dim=args.action_dim,#8
         action_chunk_size=args.action_chunk_size,#100
@@ -366,7 +357,7 @@ if __name__ == "__main__":
         hdf5_path=args.data_path,
         tokenizer=tokenizer,
         preprocess=preprocess,##===================================
-        max_length=vla_config.max_seq_len,
+        max_length=vla_config.max_seq_len,#1536
         image_special_token=vla_config.image_special_token,##===================================
                 # image_special_token: str = '@' * 196,
                 # image_ids: List = [34] * 196,
@@ -408,4 +399,16 @@ if __name__ == "__main__":
             loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=(train_sampler is None), 
                               sampler=train_sampler, num_workers=args.num_workers, pin_memory=True)
             train_epoch(epoch, loader, len(loader), 0, wandb)
+
+# python scripts\collect_franka_hdf5.py --gui  --episode 10
+# modelscope download --model openai-mirror/clip-vit-base-patch16 ----local_dir ./model/vision_model/clip-vit-base-patch16
+# python trainer/post_train_vla.py --data_path ./dataset/franka_pick_dataset.hdf5 --epochs 20  --batch_size 64  --learning_rate 1e-3  --action_dim 8 --robot_state_dim 8  --action_chunk_size 100 --use_swanlab  --swanlab_project MiniMind-VLA
+# python trainer/post_train_vla.py
+# --data_path ./dataset/franka_pick_dataset.hdf5
+# --epochs 20
+# --batch_size 64
+# --learning_rate 1e-3
+# --action_dim 8 --robot_state_dim 8  --action_chunk_size 100 --use_swanlab  --swanlab_project MiniMind-VLA
+
+
 
